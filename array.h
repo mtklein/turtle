@@ -9,4 +9,4 @@ typedef struct {
 } array;
 
 // Return a pointer to more uninitialized bytes appended to the end of the array.
-char* array_grow(array*, size_t more);
+void* array_grow(array*, size_t more);
