@@ -7,7 +7,7 @@ static size_t cap(size_t len) {
                     : 1 << (CHAR_BIT*sizeof(len) - (size_t)__builtin_clzll(len-1));
 }
 
-void* array_grow(array *a, size_t more) {
+void* array_grow(struct array *a, size_t more) {
     if (a->len + more > cap(a->len)) {
         a->ptr = realloc(a->ptr, cap(a->len + more));
     }

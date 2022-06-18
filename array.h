@@ -3,10 +3,10 @@
 #include <stddef.h>
 
 // Init with = {0} and cleanup with free(ptr).
-typedef struct {
+struct array {
     char  *ptr;
     size_t len;
-} array;
+};
 
 // Return a pointer to more uninitialized bytes appended to the end of the array.
-void* array_grow(array*, size_t more);
+void* array_grow(struct array*, size_t more);

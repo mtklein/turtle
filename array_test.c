@@ -3,13 +3,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void with_array(void (*fn)(array*)) {
-    array a = {0};
+static void with_array(void (*fn)(struct array*)) {
+    struct array a = {0};
     fn(&a);
     free(a.ptr);
 }
 
-static void test_growth(array *a) {
+static void test_growth(struct array *a) {
     const int k = 10;
 
     for (size_t i = 0; i < k; i++) {
