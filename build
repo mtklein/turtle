@@ -3,7 +3,7 @@
 import os
 import sys
 
-srcs = ['array', 'hash']
+srcs = ['buffer', 'hash']
 modes = {
     'dbg': '',
     'opt': '-Os',
