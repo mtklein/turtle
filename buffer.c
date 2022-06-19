@@ -12,6 +12,8 @@ struct buffer* buffer_grow(struct buffer *b, size_t more) {
     if (cap(len) < len+more) {
         b = realloc(b, sizeof *b + cap(len+more));
     }
-    b->len = len+more;
+    if (b) {
+        b->len = len+more;
+    }
     return b;
 }

@@ -3,7 +3,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int main(void) {
+static void test_growth(void) {
     const size_t k = 10;
     struct buffer *b = NULL;
 
@@ -19,5 +19,18 @@ int main(void) {
     }
 
     free(b);
+}
+
+static void test_grow_by_zero(void) {
+    struct buffer *b = NULL;
+    for (int i = 0; i < 2; i++) {
+        b = buffer_grow(b,0);
+        assert(b == NULL);
+    }
+}
+
+int main(void) {
+    test_growth();
+    test_grow_by_zero();
     return 0;
 }
