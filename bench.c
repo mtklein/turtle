@@ -1,11 +1,5 @@
 #include "bench.h"
-#include <sys/time.h>
-
-static double now_ns(void) {
-    struct timespec ts;
-    clock_gettime(CLOCK_MONOTONIC, &ts);
-    return ts.tv_sec*1e9 + ts.tv_nsec;
-}
+#include "now.h"
 
 double bench(double const goal_ns, double (*fn)(int loops)) {
     double elapsed_ns =  0,
