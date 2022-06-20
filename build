@@ -2,8 +2,8 @@
 
 modes = {
     'dbg': '',
-    'opt': '-Os',
-    'lto': '-Os -flto',
+    'opt': '-DNDEBUG -Os',
+    'lto': '-DNDEBUG -Os -flto',
     'san': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
 }
 
