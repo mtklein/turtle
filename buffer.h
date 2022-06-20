@@ -7,5 +7,5 @@ struct buffer {
     char   bytes[];
 };
 
-// Create with buffer_grow(NULL, ...), clean up with free().
+// Create with buffer_grow(NULL, ...); clean up with free().
 struct buffer* buffer_grow(struct buffer*, size_t more);
