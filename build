@@ -1,9 +1,5 @@
 #!/usr/bin/env python3
 
-import os
-import sys
-
-srcs = ['buffer', 'hash']
 modes = {
     'dbg': '',
     'opt': '-Os',
@@ -11,8 +7,14 @@ modes = {
     'san': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
 }
 
-with open('build.ninja', 'w') as f:
-    f.write('''
+import os
+import subprocess
+import sys
+
+srcs  = subprocess.check_output(['git', 'grep', '-lw',        '.', '**.c']).decode('utf-8').split()
+mains = subprocess.check_output(['git', 'grep', '-lw', 'int main', '**.c']).decode('utf-8').split()
+
+rules = '''
 builddir = out
 
 cc = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
@@ -22,27 +24,59 @@ rule compile
     depfile = $out.d
     deps    = gcc
 
+rule syms
+    command = nm -g $in > $out
+
 rule link
     command = $cc $in -o $out
 
 rule run
     command = ./$in > $out
-''')
+'''
 
-    for src in srcs:
-        for mode,flags in modes.items():
-            f.write(f'''
-build out/{mode}/{src}.o:      compile {src}.c
-  cc = $cc {flags}
-build out/{mode}/{src}_test.o: compile {src}_test.c
-  cc = $cc {flags}
-build out/{mode}/{src}_test:   link out/{mode}/{src}.o out/{mode}/{src}_test.o
-  cc = $cc {flags}
-build out/{mode}/{src}.ok:     run out/{mode}/{src}_test
-''')
+with open('build.ninja', 'w') as f:
+    f.write(rules)
+    for mode,flags in modes.items():
+        for src in srcs:
+            obj = os.path.join('out', mode, src.replace('.c','.o'))
+            f.write(f'build {obj}: compile {src}\n')
+            f.write(f'    cc = $cc {flags}\n')
+            f.write(f'build {obj.replace(".o",".syms")}: syms {obj}\n')
 
+subprocess.check_call(['ninja'] + sys.argv[1:])
 
-if os.system('ninja ' + ' '.join(sys.argv[1:])) == 0:
-    os.remove('build.ninja')
-    sys.exit(os.system('git add -u'))
-sys.exit(1)
+with open('build.ninja', 'w') as f:
+    f.write(rules)
+    for mode,flags in modes.items():
+        syms = {}
+        for src in srcs:
+            obj = os.path.join('out', mode, src.replace('.c','.o'))
+            for line in open(obj.replace('.o','.syms')).readlines():
+                parts = line.split()
+                kind,sym = parts[-2],parts[-1]
+                if kind != 'U':
+                    syms[sym] = obj
+
+        deps = {}
+        for src in srcs:
+            obj = os.path.join('out', mode, src.replace('.c','.o'))
+            deps[obj] = set()
+            for line in open(obj.replace('.o','.syms')).readlines():
+                parts = line.split()
+                kind,sym = parts[-2],parts[-1]
+                if sym in syms and kind == 'U':
+                    deps[obj].add(syms[sym])
+
+        for src in mains:
+            obj = os.path.join('out', mode, src.replace('.c','.o'))
+            exe = obj.replace('.o','')
+            f.write(f'build {exe}: link {obj}')
+            for dep in deps[obj]:  #TODO: recursive deps
+                f.write(f' {dep}')
+            f.write(f'\n    cc = $cc {flags}\n')
+            f.write(f'build {obj.replace(".o",".ok")}: run {exe}\n')
+
+subprocess.check_call(['ninja'] + sys.argv[1:])
+
+os.remove('build.ninja')
+subprocess.check_call(['git', 'add', '-u'])
