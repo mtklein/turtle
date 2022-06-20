@@ -45,6 +45,12 @@ with open('build.ninja', 'w') as f:
 
 subprocess.check_call(['ninja'] + sys.argv[1:])
 
+def recursive_deps(deps, obj):
+    r = {obj}
+    for dep in deps[obj]:
+        r.update(recursive_deps(deps, dep))
+    return r
+
 with open('build.ninja', 'w') as f:
     f.write(rules)
     for mode,flags in modes.items():
@@ -70,8 +76,8 @@ with open('build.ninja', 'w') as f:
         for src in mains:
             obj = os.path.join('out', mode, src.replace('.c','.o'))
             exe = obj.replace('.o','')
-            f.write(f'build {exe}: link {obj}')
-            for dep in deps[obj]:  #TODO: recursive deps
+            f.write(f'build {exe}: link')
+            for dep in sorted(recursive_deps(deps, obj)):
                 f.write(f' {dep}')
             f.write(f'\n    cc = $cc {flags}\n')
             f.write(f'build {obj.replace(".o",".ok")}: run {exe}\n')
