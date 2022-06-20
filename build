@@ -14,7 +14,11 @@ import sys
 srcs  = subprocess.check_output(['git', 'grep', '-lw',        '.', '**.c']).decode('utf-8').split()
 mains = subprocess.check_output(['git', 'grep', '-lw', 'int main', '**.c']).decode('utf-8').split()
 
-rules = '''
+targets = [src.strip('.c') for src in srcs]
+mains   = [src.strip('.c') for src in mains]
+tests   = [target for target in mains if '_test' in target]
+
+header = '''
 builddir = out
 
 cc = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
@@ -35,52 +39,53 @@ rule run
 '''
 
 with open('build.ninja', 'w') as f:
-    f.write(rules)
+    f.write(header)
     for mode,flags in modes.items():
-        for src in srcs:
-            obj = os.path.join('out', mode, src.replace('.c','.o'))
-            f.write(f'build {obj}: compile {src}\n')
-            f.write(f'    cc = $cc {flags}\n')
-            f.write(f'build {obj.replace(".o",".syms")}: syms {obj}\n')
+        for target in targets:
+            f.write(
+                f'build out/{mode}/{target}.o: compile {target+".c"}\n'
+                f'    cc = $cc {flags}\n'
+                f'build out/{mode}/{target+".sym"}: syms out/{mode}/{target}.o\n'
+            )
 
 subprocess.check_call(['ninja'] + sys.argv[1:])
 
-def recursive_deps(deps, obj):
-    r = {obj}
-    for dep in deps[obj]:
+def recursive_deps(deps, target):
+    r = {target}
+    for dep in deps[target]:
         r.update(recursive_deps(deps, dep))
     return r
 
 with open('build.ninja', 'w') as f:
-    f.write(rules)
+    f.write(header)
     for mode,flags in modes.items():
         syms = {}
-        for src in srcs:
-            obj = os.path.join('out', mode, src.replace('.c','.o'))
-            for line in open(obj.replace('.o','.syms')).readlines():
+        for target in targets:
+            for line in open(os.path.join('out', mode, target+'.sym')).readlines():
                 parts = line.split()
                 kind,sym = parts[-2],parts[-1]
                 if kind != 'U':
-                    syms[sym] = obj
+                    syms[sym] = target
 
         deps = {}
-        for src in srcs:
-            obj = os.path.join('out', mode, src.replace('.c','.o'))
-            deps[obj] = set()
-            for line in open(obj.replace('.o','.syms')).readlines():
+        for target in targets:
+            deps[target] = set()
+            for line in open(os.path.join('out', mode, target+'.sym')).readlines():
                 parts = line.split()
                 kind,sym = parts[-2],parts[-1]
                 if sym in syms and kind == 'U':
-                    deps[obj].add(syms[sym])
+                    deps[target].add(syms[sym])
 
-        for src in mains:
-            obj = os.path.join('out', mode, src.replace('.c','.o'))
-            exe = obj.replace('.o','')
-            f.write(f'build {exe}: link')
-            for dep in sorted(recursive_deps(deps, obj)):
-                f.write(f' {dep}')
-            f.write(f'\n    cc = $cc {flags}\n')
-            f.write(f'build {obj.replace(".o",".ok")}: run {exe}\n')
+        for target in mains:
+            objs = [os.path.join('out', mode, dep)+'.o' for dep in recursive_deps(deps, target)]
+            f.write(
+                f'build out/{mode}/{target}: link {" ".join(sorted(objs))}\n'
+                f'    cc = $cc {flags}\n'
+            )
+
+        for target in [target for target in mains if '_test' in target]:
+            f.write(f'build out/{mode}/{target+".ok"}: run out/{mode}/{target}\n')
+
 
 subprocess.check_call(['ninja'] + sys.argv[1:])
 
