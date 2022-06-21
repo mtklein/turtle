@@ -1,6 +1,10 @@
-#include "buffer.h"
-#undef NDEBUG
-#include <assert.h>
+#if defined(UNITY_BUILD)
+    #include "buffer.c"
+#else
+    #include "buffer.h"
+#endif
+
+#include "expect.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -12,11 +16,11 @@ static void test_growth(void) {
         b = buffer_grow(b, sizeof i);
         memcpy(b->bytes + i * sizeof i, &i, sizeof i);
     }
-    assert(b->len == k * sizeof(size_t));
+    expect(b->len == k * sizeof(size_t));
 
     for (size_t v,i = 0; i < k; i++) {
         memcpy(&v, b->bytes + i * sizeof i, sizeof v);
-        assert(v == i);
+        expect(v == i);
     }
 
     free(b);
@@ -26,12 +30,28 @@ static void test_grow_by_zero(void) {
     struct buffer *b = NULL;
     for (int i = 0; i < 2; i++) {
         b = buffer_grow(b,0);
-        assert(b == NULL);
+        expect(b == NULL);
     }
 }
+
+#if defined(UNITY_BUILD)
+static void test_cap(void) {
+    expect(cap(0) == 0);
+    expect(cap(1) == 1);
+    expect(cap(2) == 2);
+    expect(cap(3) == 4);
+    for (size_t lg = 2; lg < CHAR_BIT * sizeof lg; lg++) {
+        size_t pow2 = (size_t)1 << lg;
+        expect(cap(pow2-1) == pow2);
+    }
+}
+#endif
 
 int main(void) {
     test_growth();
     test_grow_by_zero();
+#if defined(UNITY_BUILD)
+    test_cap();
+#endif
     return 0;
 }

@@ -1,18 +1,19 @@
 #!/usr/bin/env python3
 
+import os
+import subprocess
+import sys
+
 modes = {
     'dbg': '',
     'opt': '-DNDEBUG -Os',
     'lto': '-DNDEBUG -Os -flto',
     'san': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+    'uni': '-DUNITY_BUILD',
 }
 
-import os
-import subprocess
-import sys
-
-srcs  = subprocess.check_output(['git', 'grep', '-lw',        '.', '**.c']).decode('utf-8').split()
-mains = subprocess.check_output(['git', 'grep', '-lw', 'int main', '**.c']).decode('utf-8').split()
+srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
+mains = subprocess.check_output(['git','grep','-lw','int main','**.c']).decode('utf-8').split()
 
 targets = [src.strip('.c') for src in srcs]
 mains   = [src.strip('.c') for src in mains]
@@ -61,11 +62,12 @@ with open('build.ninja', 'w') as f:
     for mode,flags in modes.items():
         syms = {}
         for target in targets:
-            for line in open(os.path.join('out', mode, target+'.sym')).readlines():
-                parts = line.split()
-                kind,sym = parts[-2],parts[-1]
-                if kind != 'U':
-                    syms[sym] = target
+            if target not in mains:
+                for line in open(os.path.join('out', mode, target+'.sym')).readlines():
+                    parts = line.split()
+                    kind,sym = parts[-2],parts[-1]
+                    if kind != 'U':
+                        syms[sym] = target
 
         deps = {}
         for target in targets:

@@ -1,7 +1,12 @@
-#include "bench.h"
-#include "hash.h"
-#undef NDEBUG
-#include <assert.h>
+#if defined(UNITY_BUILD)
+    #include "bench.c"
+    #include "hash.c"
+#else
+    #include "bench.h"
+    #include "hash.h"
+#endif
+
+#include "expect.h"
 #include <stdio.h>
 #include <stdlib.h>
 
@@ -24,7 +29,7 @@ static _Bool is_ctx(void *ptr, void *ctx) { return ptr == ctx; }
 
 static double lookup(int loops) {
     while (loops --> 0) {
-        assert(hash_lookup(h, 42, is_ctx, (void*)42));
+        expect(hash_lookup(h, 42, is_ctx, (void*)42));
     }
     return 1;
 }
