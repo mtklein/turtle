@@ -1,9 +1,4 @@
-#if defined(UNITY_BUILD)
-    #include "buffer.c"
-#else
-    #include "buffer.h"
-#endif
-
+#include "buffer.h"
 #include "expect.h"
 #include <stdlib.h>
 #include <string.h>

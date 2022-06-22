@@ -1,3 +1,4 @@
+#undef UNITY_BUILD
 #include "hash.h"
 #include <assert.h>
 #include <stdbool.h>
