@@ -5,10 +5,8 @@ import subprocess
 import sys
 
 modes = {
-    'dbg': '',
-    'opt': '-DNDEBUG -Os',
-    'lto': '-DNDEBUG -Os -flto',
-    'san': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+    'dbg': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+    'opt': '-DNDEBUG -Os -flto',
 }
 
 srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
