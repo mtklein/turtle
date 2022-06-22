@@ -8,8 +8,8 @@ modes = {
     'dbg': '',
     'opt': '-DNDEBUG -Os',
     'lto': '-DNDEBUG -Os -flto',
+    'uni': '-DNDEBUG -Os -DUNITY_BUILD',
     'san': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'uni': '-DUNITY_BUILD',
 }
 
 srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
