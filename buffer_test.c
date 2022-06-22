@@ -1,4 +1,4 @@
-#include "buffer.c"
+#include "buffer.h"
 #include "expect.h"
 #include <stdlib.h>
 #include <string.h>
@@ -29,20 +29,8 @@ static void test_grow_by_zero(void) {
     }
 }
 
-static void test_cap(void) {
-    expect(cap(0) == 0);
-    expect(cap(1) == 1);
-    expect(cap(2) == 2);
-    expect(cap(3) == 4);
-    for (size_t lg = 2; lg < CHAR_BIT * sizeof lg; lg++) {
-        size_t pow2 = (size_t)1 << lg;
-        expect(cap(pow2-1) == pow2);
-    }
-}
-
 int main(void) {
     test_growth();
     test_grow_by_zero();
-    test_cap();
     return 0;
 }
