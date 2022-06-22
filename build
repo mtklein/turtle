@@ -6,7 +6,8 @@ import sys
 
 modes = {
     'dbg': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'opt': '-DNDEBUG -Os -flto',
+    'opt': '-DNDEBUG -Os',
+    'lto': '-DNDEBUG -Os -flto',
 }
 
 srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
