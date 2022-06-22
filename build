@@ -55,9 +55,8 @@ rule run
             f.write(
                 f'build out/{mode}/{target}: link out/{mode}/{target}.o out/{mode}/lib.a\n'
                 f'    cc = $cc {flags}\n'
+                f'build out/{mode}/{target}.log: run out/{mode}/{target}\n'
             )
-            if '_test' in target:
-                f.write(f'build out/{mode}/{target}.ok: run out/{mode}/{target}\n')
 
 subprocess.check_call(['ninja'] + sys.argv[1:])
 os.remove('build.ninja')
