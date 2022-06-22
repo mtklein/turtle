@@ -35,14 +35,14 @@ static void test_grow_by_zero(void) {
 }
 
 #if defined(UNITY_BUILD)
-static void test_buffer_cap(void) {
-    expect(buffer_cap(0) == 0);
-    expect(buffer_cap(1) == 1);
-    expect(buffer_cap(2) == 2);
-    expect(buffer_cap(3) == 4);
+static void test_cap(void) {
+    expect(cap(0) == 0);
+    expect(cap(1) == 1);
+    expect(cap(2) == 2);
+    expect(cap(3) == 4);
     for (size_t lg = 2; lg < CHAR_BIT * sizeof lg; lg++) {
         size_t pow2 = (size_t)1 << lg;
-        expect(buffer_cap(pow2-1) == pow2);
+        expect(cap(pow2-1) == pow2);
     }
 }
 #endif
@@ -51,7 +51,7 @@ int main(void) {
     test_growth();
     test_grow_by_zero();
 #if defined(UNITY_BUILD)
-    test_buffer_cap();
+    test_cap();
 #endif
     return 0;
 }
