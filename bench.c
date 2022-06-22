@@ -1,5 +1,5 @@
 #include "bench.h"
-#include <sys/time.h>
+#include <time.h>
 
 static double now_ns(void) {
     struct timespec ts;
