@@ -1,6 +1,6 @@
 #pragma once
 
-int  dprintf(int, const char*, ...);
-void abort(void);
+__attribute__((noreturn))
+void expect_fail(const char*, int, const char*);
 
-#define expect(x) if (!(x)) dprintf(2, "%s:%d\texpect(%s) failed\n",__FILE__,__LINE__,#x),abort()
+#define expect(x) if (!(x)) expect_fail(__FILE__, __LINE__, #x)
