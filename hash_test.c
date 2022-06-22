@@ -1,6 +1,5 @@
 #include "expect.h"
 #include "hash.h"
-#include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
 
@@ -8,7 +7,7 @@ static void test(struct hash* (*fn)(struct hash*)) {
     free(fn(NULL));
 }
 
-static bool is_ctx(void *val, void *ctx) {
+static _Bool is_ctx(void *val, void *ctx) {
     return val == ctx;
 }
 
