@@ -1,9 +1,4 @@
-#if defined(UNITY_BUILD)
-    #include "buffer.c"
-#else
-    #include "buffer.h"
-#endif
-
+#include "buffer.c"
 #include "expect.h"
 #include <stdlib.h>
 #include <string.h>
@@ -34,7 +29,6 @@ static void test_grow_by_zero(void) {
     }
 }
 
-#if defined(UNITY_BUILD)
 static void test_cap(void) {
     expect(cap(0) == 0);
     expect(cap(1) == 1);
@@ -45,13 +39,10 @@ static void test_cap(void) {
         expect(cap(pow2-1) == pow2);
     }
 }
-#endif
 
 int main(void) {
     test_growth();
     test_grow_by_zero();
-#if defined(UNITY_BUILD)
     test_cap();
-#endif
     return 0;
 }
