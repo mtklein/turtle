@@ -17,9 +17,10 @@ mains = subprocess.check_output(['git','grep','-lw','int main','**.c']).decode('
 
 targets = [src.strip('.c') for src in srcs]
 mains   = [src.strip('.c') for src in mains]
-tests   = [target for target in mains if '_test' in target]
+rest    = [target for target in targets if target not in mains]
 
-header = '''
+with open('build.ninja', 'w') as f:
+    f.write('''
 builddir = out
 
 cc = clang -fcolor-diagnostics -Weverything -Xclang -nostdsysteminc
@@ -29,67 +30,35 @@ rule compile
     depfile = $out.d
     deps    = gcc
 
-rule syms
-    command = nm -g $in > $out
+rule archive
+    command = ar rcs $out $in
 
 rule link
     command = $cc $in -o $out
 
 rule run
     command = ./$in > $out
-'''
-
-with open('build.ninja', 'w') as f:
-    f.write(header)
+''')
     for mode,flags in modes.items():
         for target in targets:
             f.write(
                 f'build out/{mode}/{target}.o: compile {target+".c"}\n'
                 f'    cc = $cc {flags}\n'
-                f'build out/{mode}/{target+".sym"}: syms out/{mode}/{target}.o\n'
             )
 
-subprocess.check_call(['ninja'] + sys.argv[1:])
-
-def recursive_deps(deps, target):
-    r = {target}
-    for dep in deps[target]:
-        r.update(recursive_deps(deps, dep))
-    return r
-
-with open('build.ninja', 'w') as f:
-    f.write(header)
-    for mode,flags in modes.items():
-        syms = {}
-        for target in targets:
-            if target not in mains:
-                for line in open(os.path.join('out', mode, target+'.sym')).readlines():
-                    parts = line.split()
-                    kind,sym = parts[-2],parts[-1]
-                    if kind != 'U':
-                        syms[sym] = target
-
-        deps = {}
-        for target in targets:
-            deps[target] = set()
-            for line in open(os.path.join('out', mode, target+'.sym')).readlines():
-                parts = line.split()
-                kind,sym = parts[-2],parts[-1]
-                if sym in syms and kind == 'U':
-                    deps[target].add(syms[sym])
+        f.write(
+            f'build out/{mode}/lib.a: archive'
+            f' {" ".join(os.path.join("out", mode, target+".o") for target in rest)}\n'
+        )
 
         for target in mains:
-            objs = [os.path.join('out', mode, dep)+'.o' for dep in recursive_deps(deps, target)]
             f.write(
-                f'build out/{mode}/{target}: link {" ".join(sorted(objs))}\n'
+                f'build out/{mode}/{target}: link out/{mode}/{target}.o out/{mode}/lib.a\n'
                 f'    cc = $cc {flags}\n'
             )
-
-        for target in [target for target in mains if '_test' in target]:
-            f.write(f'build out/{mode}/{target+".ok"}: run out/{mode}/{target}\n')
-
+            if '_test' in target:
+                f.write(f'build out/{mode}/{target}.ok: run out/{mode}/{target}\n')
 
 subprocess.check_call(['ninja'] + sys.argv[1:])
-
 os.remove('build.ninja')
 subprocess.check_call(['git', 'add', '-u'])
