@@ -1,11 +1,10 @@
 #if defined(UNITY_BUILD)
     #include "buffer.c"
-    #include "expect.c"
 #else
     #include "buffer.h"
-    #include "expect.h"
 #endif
 
+#include "expect.h"
 #include <stdlib.h>
 #include <string.h>
 

@@ -1,13 +1,12 @@
 #if defined(UNITY_BUILD)
     #include "bench.c"
-    #include "expect.c"
     #include "hash.c"
 #else
     #include "bench.h"
-    #include "expect.h"
     #include "hash.h"
 #endif
 
+#include "expect.h"
 #include <stdio.h>
 #include <stdlib.h>
 

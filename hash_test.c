@@ -1,11 +1,10 @@
 #if defined(UNITY_BUILD)
-    #include "expect.c"
     #include "hash.c"
 #else
-    #include "expect.h"
     #include "hash.h"
 #endif
 
+#include "expect.h"
 #include <stdbool.h>
 #include <stdint.h>
 #include <stdlib.h>
