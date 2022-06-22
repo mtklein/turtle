@@ -1,4 +1,3 @@
-#undef UNITY_BUILD
 #include "buffer.h"
 #include <limits.h>
 #include <stdlib.h>
