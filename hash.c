@@ -12,7 +12,7 @@ struct hash {
     } table[];
 };
 
-static void insert(struct hash *h, int hash, void *val) {
+static void hash_just_insert(struct hash *h, int hash, void *val) {
     assert(h && h->len <= h->mask);
     int const mask = h->mask;
 
@@ -42,7 +42,7 @@ struct hash* hash_insert(struct hash *h, int hash, void *val) {
 
         for (int i = 0; i < cap; i++) {
             if (h->table[i].live) {
-                insert(grown, h->table[i].hash, h->table[i].val);
+                hash_just_insert(grown, h->table[i].hash, h->table[i].val);
             }
         }
         assert(grown->len == len);
@@ -51,7 +51,7 @@ struct hash* hash_insert(struct hash *h, int hash, void *val) {
         h = grown;
     }
 
-    insert(h, hash, val);
+    hash_just_insert(h, hash, val);
     return h;
 }
 
