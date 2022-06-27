@@ -30,8 +30,8 @@ static double lookup(int loops) {
 }
 
 int main(int argc, char **argv) {
-    /* global */ scale   = argc > 1 ? atoi(argv[1]) : 1024;
-    double const goal_ns = argc > 2 ? atof(argv[2]) : 1e6;
+    double const goal_ns = argc > 1 ? atof(argv[1]) : 1e6;
+    /* global */ scale   = argc > 2 ? atoi(argv[2]) : 1024;
 
     {
         printf("growth\t%.3gns\n", bench(goal_ns, growth));

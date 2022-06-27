@@ -13,9 +13,8 @@ struct hash {
 
 static void insert(struct hash *h, int hash, void *val) {
     assert(h && h->len <= h->mask);
-    int const mask = h->mask;
 
-    for (int i = hash & mask, round = 0; round <= mask; round++) {
+    for (int i = hash & h->mask, round = 0; round <= h->mask; round++) {
         if (h->table[i].live == 0) {
             h->table[i].live = 1;
             h->table[i].hash = hash;
@@ -23,7 +22,7 @@ static void insert(struct hash *h, int hash, void *val) {
             h->len++;
             return;
         }
-        i = (i+1) & mask;
+        i = (i+1) & h->mask;
     }
 
     assert(0 && "unreachable");
