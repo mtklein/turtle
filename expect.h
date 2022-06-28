@@ -1,6 +1,6 @@
 #pragma once
 
-__attribute__((noreturn))
-void expect_fail(const char*, int, const char*);
+int dprintf(int, char const*, ...);
 
-#define expect(x) if (!(x)) expect_fail(__FILE__, __LINE__, #x)
+#define expect(x) \
+    if (!(x)) dprintf(2, "%s:%d expect(%s) failed\n", __FILE__, __LINE__, #x), __builtin_trap()
