@@ -13,14 +13,16 @@ static int         scale;
 static double growth(int loops) {
     while (loops --> 0) {
         for (int i = 0; i < scale; i++) {
-            h = hash_insert(h, i, (void*)(intptr_t)i);
+            h = hash_insert(h, i, i);
         }
         kill(h);
     }
     return scale;
 }
 
-static _Bool is_ctx(void *ptr, void *ctx) { return ptr == ctx; }
+static _Bool is_ctx(int val, void *ctx) {
+    return val == (intptr_t)ctx;
+}
 
 static double lookup(int loops) {
     while (loops --> 0) {
@@ -40,7 +42,7 @@ int main(int argc, char **argv) {
 
     {
         for (int i = 0; i < scale; i++) {
-            h = hash_insert(h, i, (void*)(intptr_t)i);
+            h = hash_insert(h, i, i);
         }
         printf("lookup\t%.3gns\n", bench(goal_ns, lookup));
         kill(h);
