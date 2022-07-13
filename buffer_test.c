@@ -28,10 +28,10 @@ static double growth(int loops) {
 }
 
 int main(int argc, char **argv) {
-    double const goal_ns = argc > 1 ? atof(argv[1]) : 1e6;
+    bench_goal_ns = argc > 1 ? atof(argv[1]) : bench_goal_ns;
 
     test();
-    bench(goal_ns, growth);
+    bench(growth);
     free(b);
 
     return 0;

@@ -77,21 +77,21 @@ static double lookup(int loops) {
 }
 
 int main(int argc, char **argv) {
-    double const goal_ns = argc > 1 ? atof(argv[1]) : 1e6;
-    /* global */ scale   = argc > 2 ? atoi(argv[2]) : 1024;
+    bench_goal_ns = argc > 1 ? atof(argv[1]) : bench_goal_ns;
+    scale         = argc > 2 ? atoi(argv[2]) : 1024;
 
     test(basics);
     test(thorough);
     test(zero_val);
     test(zero_hash);
 
-    bench(goal_ns, growth);
+    bench(growth);
     kill(h);
 
     for (int i = 0; i < scale; i++) {
         h = hash_insert(h, i, i);
     }
-    bench(goal_ns, lookup);
+    bench(lookup);
     kill(h);
 
     return 0;
