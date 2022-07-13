@@ -1,28 +1,27 @@
 #include "buffer.h"
 #include "test.h"
-#include <stdlib.h>
 
 static void test(void) {
     const int k = 20000;
 
-    int *b = NULL;
+    int *buf = NULL;
     for (int i = 0; i < k; i++) {
-        b = buffer_push(b,i);
-        b[i] = i;
+        buf = buffer_push(buf, i);
+        buf[i] = i;
     }
     for (int i = 0; i < k; i++) {
-        expect(b[i] == i);
+        expect(buf[i] == i);
     }
-    free(b);
+    kill(buf);
 }
 
-static int    n;
-static float *b;
+static float *buf;
+static int    len;
 
 static double growth(int loops) {
     while (loops --> 0) {
-        b = buffer_push(b, n);
-        b[n++] = 42;
+        buf = buffer_push(buf, len);
+        buf[len++] = 42;
     }
     return 1;
 }
@@ -32,7 +31,7 @@ int main(int argc, char **argv) {
 
     test();
     bench(growth);
-    free(b);
+    kill(buf);
 
     return 0;
 }

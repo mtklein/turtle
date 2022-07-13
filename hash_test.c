@@ -1,12 +1,10 @@
 #include "hash.h"
 #include "test.h"
 #include <stdint.h>
-#include <stdlib.h>
-
-#define kill(ptr) free(ptr), ptr=NULL
 
 static void test(struct hash* (*fn)(struct hash*)) {
-    free(fn(NULL));
+    struct hash *h = fn(NULL);
+    kill(h);
 }
 
 static _Bool is_ctx(int val, void *ctx) {
