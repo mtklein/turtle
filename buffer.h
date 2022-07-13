@@ -2,10 +2,6 @@
 
 #include <stddef.h>
 
-struct buffer {
-    size_t len;
-    char   bytes[];
-};
+void* buffer_push_(void*, size_t, size_t);
 
-// Create with buffer_grow(NULL, ...); clean up with free().
-struct buffer* buffer_grow(struct buffer*, size_t more);
+#define buffer_push(ptr, n) buffer_push_(ptr, (size_t)(n), sizeof *(ptr))

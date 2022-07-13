@@ -3,13 +3,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-#define kill(ptr) free(ptr), ptr=NULL
-
-static struct buffer *b;
+static int    n;
+static float *b;
 
 static double growth(int loops) {
     while (loops --> 0) {
-        b = buffer_grow(b, sizeof(void*));
+        b = buffer_push(b, n);
+        b[n++] = 42;
     }
     return 1;
 }
@@ -17,10 +17,8 @@ static double growth(int loops) {
 int main(int argc, char **argv) {
     double const goal_ns = argc > 1 ? atof(argv[1]) : 1e6;
 
-    {
-        printf("growth\t%.2gns\n", bench(goal_ns, growth));
-        kill(b);
-    }
+    printf("growth\t%.2gns\n", bench(goal_ns, growth));
+    free(b);
 
     return 0;
 }
