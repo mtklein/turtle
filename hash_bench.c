@@ -1,8 +1,6 @@
-#include "bench.h"
-#include "expect.h"
 #include "hash.h"
+#include "test.h"
 #include <stdint.h>
-#include <stdio.h>
 #include <stdlib.h>
 
 #define kill(ptr) free(ptr), ptr=NULL
@@ -36,7 +34,7 @@ int main(int argc, char **argv) {
     /* global */ scale   = argc > 2 ? atoi(argv[2]) : 1024;
 
     {
-        printf("growth\t%.3gns\n", bench(goal_ns, growth));
+        bench(goal_ns, growth);
         kill(h);
     }
 
@@ -44,7 +42,7 @@ int main(int argc, char **argv) {
         for (int i = 0; i < scale; i++) {
             h = hash_insert(h, i, i);
         }
-        printf("lookup\t%.3gns\n", bench(goal_ns, lookup));
+        bench(goal_ns, lookup);
         kill(h);
     }
 

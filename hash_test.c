@@ -1,5 +1,5 @@
-#include "expect.h"
 #include "hash.h"
+#include "test.h"
 #include <stdint.h>
 #include <stdlib.h>
 

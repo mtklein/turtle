@@ -1,4 +1,4 @@
-#include "bench.h"
+#include "test.h"
 #include <time.h>
 
 static double now_ns(void) {
@@ -8,7 +8,7 @@ static double now_ns(void) {
          + (double)ts.tv_nsec;
 }
 
-double bench(double const goal_ns, double (*fn)(int loops)) {
+double bench_(double const goal_ns, double (*fn)(int loops)) {
     double elapsed_ns =  0,
            scale      =  1;
     int    lg_loops   = -1;

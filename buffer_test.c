@@ -1,5 +1,5 @@
 #include "buffer.h"
-#include "expect.h"
+#include "test.h"
 #include <stdlib.h>
 
 int main(void) {
