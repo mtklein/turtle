@@ -4,11 +4,15 @@ import os
 import subprocess
 import sys
 
+clang = '/opt/homebrew/opt/llvm/bin/clang-14 -fcolor-diagnostics -Weverything'
+gcc   = '/opt/homebrew/bin/gcc-11            -fdiagnostics-color -Wall -Wextra'
+
 modes = {
-    'dbg': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'opt': '-DNDEBUG -Os',
-    'lto': '-DNDEBUG -Os -flto',
-    'x86': '-DNDEBUG -Os -arch x86_64 -momit-leaf-frame-pointer',
+    'dbg': clang + ' -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+    'opt': clang + ' -DNDEBUG -Os',
+    'lto': clang + ' -DNDEBUG -Os -flto',
+    'x86': clang + ' -DNDEBUG -Os -arch x86_64 -momit-leaf-frame-pointer',
+    'gcc': gcc   + ' -DNDEBUG -Os',
 }
 
 srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
@@ -22,16 +26,13 @@ with open('build.ninja', 'w') as f:
     f.write('''
 builddir = out
 
-cc = /opt/homebrew/opt/llvm/bin/clang-14 -fcolor-diagnostics -Weverything
-ar = /opt/homebrew/opt/llvm/bin/llvm-ar
-
 rule compile
     command = $cc -g -Werror -MD -MF $out.d -c $in -o $out
     depfile = $out.d
     deps    = gcc
 
 rule archive
-    command = $ar rcs $out $in
+    command = /opt/homebrew/opt/llvm/bin/llvm-ar rcs $out $in
 
 rule link
     command = $cc $in -o $out
@@ -39,11 +40,11 @@ rule link
 rule run
     command = ./$in > $out
 ''')
-    for mode,flags in modes.items():
+    for mode,cc in modes.items():
         for target in targets:
             f.write(
                 f'build out/{mode}/{target}.o: compile {target+".c"}\n'
-                f'    cc = $cc {flags}\n'
+                f'    cc = {cc}\n'
             )
 
         f.write(
@@ -54,7 +55,7 @@ rule run
         for target in mains:
             f.write(
                 f'build out/{mode}/{target}: link out/{mode}/{target}.o out/{mode}/lib.a\n'
-                f'    cc = $cc {flags}\n'
+                f'    cc = {cc}\n'
                 f'build out/{mode}/{target}.log: run out/{mode}/{target}\n'
             )
 
