@@ -54,11 +54,11 @@ static struct hash* zero_hash(struct hash *h) {
     return h;
 }
 
-static struct hash *h;
-static int         scale;
 
 static double growth(int loops) {
+    int const scale = 1024;
     while (loops --> 0) {
+        struct hash *h = NULL;
         for (int i = 0; i < scale; i++) {
             h = hash_insert(h, i, i);
         }
@@ -68,15 +68,19 @@ static double growth(int loops) {
 }
 
 static double lookup(int loops) {
+    struct hash *h = NULL;
+    for (int i = 0; i < 64; i++) {
+        h = hash_insert(h, i, i);
+    }
     while (loops --> 0) {
         expect(hash_lookup(h, 42, is_ctx, (void*)42));
     }
+    kill(h);
     return 1;
 }
 
 int main(int argc, char **argv) {
     bench_goal_ns = argc > 1 ? atof(argv[1]) : bench_goal_ns;
-    scale         = argc > 2 ? atoi(argv[2]) : 1024;
 
     test(basics);
     test(thorough);
@@ -84,13 +88,7 @@ int main(int argc, char **argv) {
     test(zero_hash);
 
     bench(growth);
-    kill(h);
-
-    for (int i = 0; i < scale; i++) {
-        h = hash_insert(h, i, i);
-    }
     bench(lookup);
-    kill(h);
 
     return 0;
 }
