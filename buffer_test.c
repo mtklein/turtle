@@ -15,14 +15,15 @@ static void test(void) {
     kill(buf);
 }
 
-static float *buf;
-static int    len;
+static float *to_free;
 
 static double growth(int loops) {
-    while (loops --> 0) {
-        buf = buffer_push(buf, len);
-        buf[len++] = 42;
+    float *buf = NULL;
+    for (int i = 0; i < loops; i++) {
+        buf = buffer_push(buf, i);
+        buf[i] = 42;
     }
+    to_free = buf;
     return 1;
 }
 
@@ -31,7 +32,7 @@ int main(int argc, char **argv) {
 
     test();
     bench(growth);
-    kill(buf);
+    kill(to_free);
 
     return 0;
 }
