@@ -45,8 +45,10 @@ static void test_zero_val(void) {
     struct hash *h = NULL;
     int val = 0;
 
+    expect(!hash_lookup(h, 42, is_val, &val));
     h = hash_insert(h, 42, val);
-    expect(hash_lookup(h, 42, is_val, &val));
+    expect( hash_lookup(h, 42, is_val, &val));
+
     kill(h);
 }
 
@@ -54,14 +56,17 @@ static void test_zero_hash(void) {
     struct hash *h = NULL;
     int val = 42;
 
+    expect(!hash_lookup(h, 0, is_val, &val));
     h = hash_insert(h, 0, val);
-    expect(hash_lookup(h, 0, is_val, &val));
+    expect( hash_lookup(h, 0, is_val, &val));
+
     kill(h);
 }
 
 
 static double growth(int loops) {
     int const scale = 1024;
+
     while (loops --> 0) {
         struct hash *h = NULL;
         for (int i = 0; i < scale; i++) {
@@ -74,6 +79,7 @@ static double growth(int loops) {
 
 static double lookup(int loops) {
     struct hash *h = NULL;
+
     for (int i = 0; i < 64; i++) {
         h = hash_insert(h, i, i);
     }
