@@ -1,59 +1,62 @@
 #include "hash.h"
 #include "test.h"
 
-static void test(struct hash* (*fn)(struct hash*)) {
-    struct hash *h = fn(NULL);
-    kill(h);
-}
-
 static _Bool is_val(int val, void *ctx) {
     return val == *(int*)ctx;
 }
 
-static struct hash* basics(struct hash *h) {
+static void test_basics(void) {
+    struct hash *h = NULL;
     int val;
-    val = 5; expect(!hash_lookup(h, 5, is_val, &val));
-    val = 7; expect(!hash_lookup(h, 7, is_val, &val));
 
-    h = hash_insert(h, 5, 5);
+    val = 6; expect(!hash_lookup(h, 5, is_val, &val));
+    val = 8; expect(!hash_lookup(h, 7, is_val, &val));
 
-    val = 5; expect( hash_lookup(h, 5, is_val, &val));
-    val = 7; expect(!hash_lookup(h, 5, is_val, &val));
-    val = 7; expect(!hash_lookup(h, 7, is_val, &val));
+    h = hash_insert(h, 5, 6);
 
-    h = hash_insert(h, 7, 7);
+    val = 6; expect( hash_lookup(h, 5, is_val, &val));
+    val = 8; expect(!hash_lookup(h, 5, is_val, &val));
+    val = 8; expect(!hash_lookup(h, 7, is_val, &val));
 
-    val = 5; expect( hash_lookup(h, 5, is_val, &val));
-    val = 7; expect( hash_lookup(h, 7, is_val, &val));
-    val = 5; expect(!hash_lookup(h, 7, is_val, &val));
-    val = 7; expect(!hash_lookup(h, 5, is_val, &val));
+    h = hash_insert(h, 7, 8);
 
-    return h;
+    val = 6; expect( hash_lookup(h, 5, is_val, &val));
+    val = 8; expect( hash_lookup(h, 7, is_val, &val));
+    val = 6; expect(!hash_lookup(h, 7, is_val, &val));
+    val = 8; expect(!hash_lookup(h, 5, is_val, &val));
+
+    kill(h);
 }
 
-static struct hash* thorough(struct hash *h) {
+static void test_thorough(void) {
+    struct hash *h = NULL;
     int const K = 47;
+
     for (int i = 0; i < K; i++) {
         for (int j = 0; j < K; j++) {
             expect(hash_lookup(h, j, is_val, &j) == (j<i));
         }
         h = hash_insert(h, i, i);
     }
-    return h;
+    kill(h);
 }
 
-static struct hash* zero_val(struct hash *h) {
+static void test_zero_val(void) {
+    struct hash *h = NULL;
     int val = 0;
+
     h = hash_insert(h, 42, val);
     expect(hash_lookup(h, 42, is_val, &val));
-    return h;
+    kill(h);
 }
 
-static struct hash* zero_hash(struct hash *h) {
+static void test_zero_hash(void) {
+    struct hash *h = NULL;
     int val = 42;
+
     h = hash_insert(h, 0, val);
     expect(hash_lookup(h, 0, is_val, &val));
-    return h;
+    kill(h);
 }
 
 
@@ -85,10 +88,10 @@ static double lookup(int loops) {
 int main(int argc, char **argv) {
     bench_goal_ns = argc > 1 ? atof(argv[1]) : bench_goal_ns;
 
-    test(basics);
-    test(thorough);
-    test(zero_val);
-    test(zero_hash);
+    test_basics();
+    test_thorough();
+    test_zero_val();
+    test_zero_hash();
 
     bench(growth);
     bench(lookup);
