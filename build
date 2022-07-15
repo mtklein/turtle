@@ -8,6 +8,7 @@ modes = {
     'dbg': '-fsanitize=address,integer,undefined -fno-sanitize-recover=all',
     'opt': '-DNDEBUG -Os',
     'lto': '-DNDEBUG -Os -flto',
+    'x86': '-DNDEBUG -Os -arch x86_64 -momit-leaf-frame-pointer',
 }
 
 srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
