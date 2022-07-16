@@ -1,5 +1,6 @@
 #include "hash.h"
 #include "test.h"
+#include <stdlib.h>
 
 static _Bool is_val(int val, void *ctx) {
     return val == *(int*)ctx;
@@ -25,7 +26,7 @@ static void test_basics(void) {
     val = 6; expect(!hash_lookup(h, 7, is_val, &val));
     val = 8; expect(!hash_lookup(h, 5, is_val, &val));
 
-    kill(h);
+    free(h);
 }
 
 static void test_thorough(void) {
@@ -38,7 +39,7 @@ static void test_thorough(void) {
         }
         h = hash_insert(h, i, i);
     }
-    kill(h);
+    free(h);
 }
 
 static void test_zero_val(void) {
@@ -49,7 +50,7 @@ static void test_zero_val(void) {
     h = hash_insert(h, 42, val);
     expect( hash_lookup(h, 42, is_val, &val));
 
-    kill(h);
+    free(h);
 }
 
 static void test_zero_hash(void) {
@@ -60,7 +61,7 @@ static void test_zero_hash(void) {
     h = hash_insert(h, 0, val);
     expect( hash_lookup(h, 0, is_val, &val));
 
-    kill(h);
+    free(h);
 }
 
 
@@ -72,7 +73,7 @@ static double growth(int loops) {
         for (int i = 0; i < scale; i++) {
             h = hash_insert(h, i, i);
         }
-        kill(h);
+        free(h);
     }
     return scale;
 }
@@ -87,7 +88,7 @@ static double lookup(int loops) {
         int val = 42;
         expect(hash_lookup(h, 42, is_val, &val));
     }
-    kill(h);
+    free(h);
     return 1;
 }
 
@@ -99,8 +100,8 @@ int main(int argc, char **argv) {
     test_zero_val();
     test_zero_hash();
 
-    bench(growth);
-    bench(lookup);
+    bench("growth", growth);
+    bench("lookup", lookup);
 
     return 0;
 }

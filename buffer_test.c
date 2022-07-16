@@ -1,5 +1,6 @@
 #include "buffer.h"
 #include "test.h"
+#include <stdlib.h>
 
 static void test(void) {
     const int k = 20000;
@@ -12,7 +13,7 @@ static void test(void) {
     for (int i = 0; i < k; i++) {
         expect(buf[i] == i);
     }
-    kill(buf);
+    free(buf);
 }
 
 static double growth(int loops) {
@@ -21,7 +22,7 @@ static double growth(int loops) {
         buf = buffer_push(buf, i);
         buf[i] = 42;
     }
-    kill(buf);
+    free(buf);
     return 1;
 }
 
@@ -29,7 +30,7 @@ int main(int argc, char **argv) {
     bench_goal_ns = argc > 1 ? atof(argv[1]) : bench_goal_ns;
 
     test();
-    bench(growth);
+    bench("growth", growth);
 
     return 0;
 }

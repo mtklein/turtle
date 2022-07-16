@@ -1,5 +1,10 @@
 #include "test.h"
+#include <stdio.h>
 #include <time.h>
+
+void expect_fail(char const *file, int line, char const *msg) {
+    fprintf(stderr, "%s:%d expect(%s) failed\n", file, line, msg);
+}
 
 double bench_goal_ns = 1e6;
 
@@ -10,7 +15,7 @@ static double now_ns(void) {
          + (double)ts.tv_nsec;
 }
 
-double bench_(double (*fn)(int loops)) {
+void bench(char const *label, double (*fn)(int loops)) {
     double elapsed_ns =  0,
            scale      =  1;
     int    lg_loops   = -1;
@@ -21,5 +26,5 @@ double bench_(double (*fn)(int loops)) {
         elapsed_ns = now_ns() - start;
     }
 
-    return elapsed_ns / (1 << lg_loops) / scale;
+    fprintf(stdout, "%s\t%.2g\n", label, elapsed_ns / (1 << lg_loops) / scale);
 }
