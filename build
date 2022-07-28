@@ -4,7 +4,7 @@ import os
 import subprocess
 import sys
 
-clang = '/opt/homebrew/opt/llvm/bin/clang-14 -fcolor-diagnostics -Weverything'
+clang = '/opt/homebrew/opt/llvm/bin/clang-14 -fcolor-diagnostics -Weverything -Wno-declaration-after-statement'
 gcc   = '/opt/homebrew/bin/gcc-11            -fdiagnostics-color -Wall -Wextra'
 
 modes = {
