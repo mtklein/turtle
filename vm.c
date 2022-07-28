@@ -124,11 +124,11 @@ stage(store) {
     next;
 }
 
-stage(add ) { x = x+y  ; next; }
-stage(sub ) { x = x-y  ; next; }
-stage(mul ) { x = x*y  ; next; }
-stage(div_) { x = x/y  ; next; }
-stage(mad ) { x = x*y+z; next; }
+stage(add ) { x += y  ; next; }
+stage(sub ) { x -= y  ; next; }
+stage(mul ) { x *= y  ; next; }
+stage(div_) { x /= y  ; next; }
+stage(mad ) { x += y*z; next; }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-equal"
@@ -166,7 +166,7 @@ int vm_add(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, add ); }
 int vm_sub(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, sub ); }
 int vm_mul(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, mul ); }
 int vm_div(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, div_); }
-int vm_mad(Builder *b, int x, int y, int z) { return inst(b, x,y,z, 0, mad ); }
+int vm_mad(Builder *b, int x, int y, int z) { return inst(b, z,x,y, 0, mad ); }
 
 int vm_eq(Builder *b, int x, int y) { return inst(b, x,y,0, 0, eq); }
 int vm_ne(Builder *b, int x, int y) { return inst(b, x,y,0, 0, ne); }
