@@ -10,13 +10,13 @@ static _Bool equiv(float x, float y) {
 }
 
 int main(void) {
-    struct builder *b = vm_builder();
+    struct vm_builder *b = vm_builder();
 
     int x = vm_load(b, 1),
         y = vm_load(b, 2);
     vm_store(b, 1, vm_add(b, x,y));
 
-    struct program *p = vm_compile(b);
+    struct vm_program *p = vm_compile(b);
     expect(p);
     b = NULL;
 
