@@ -114,6 +114,10 @@ Program* vm_compile(Builder *b) {
         *pi++ = (PInst){bi.fn, bi.arg, 0};
         x = i+1;
 
+        if (bi.uses == 1 && bi.death == x+1) {
+            continue;
+        }
+
         *pi++ = (PInst){save, (unsigned)i, 0};
     }
     *pi++ = (PInst){done, 0, 0};
