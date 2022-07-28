@@ -114,6 +114,11 @@ Program* vm_compile(Builder *b) {
         *pi++ = (PInst){bi.fn, bi.arg, 0};
         x = i+1;
 
+        if (bi.uses == 0)  {
+            // N.B. dead code _or_ a side-effect like a store.
+            continue;
+        }
+
         if (bi.uses == 1 && bi.death == x+1) {
             continue;
         }
