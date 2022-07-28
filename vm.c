@@ -54,28 +54,37 @@ stage(done) {
 }
 
 struct program* vm_compile(struct builder *b) {
-    int insts = 1;  /* done */
-    for (int i = 0; i < b->insts; i++) {
-        // TODO: the whole point of the exercise is to elide as many loads and stores as possible.
-        if (b->inst[i].x) { insts++; /*load x*/ }
-        if (b->inst[i].y) { insts++; /*load y*/ }
-        if (b->inst[i].z) { insts++; /*load z*/ }
-        if (     1      ) { insts++; /*do it!*/  }
-        if (     1      ) { insts++; /*save x*/ }
-    }
+    // Each might turn into ldx, ldy, ldz, the op itself, and finally stx, plus one more for done.
+    struct program *p = malloc(sizeof *p + (size_t)(5 * b->insts + 1) * sizeof *p->inst);
 
-    struct program *p = malloc(sizeof *p + (size_t)insts * sizeof *p->inst);
-    p->insts = insts;
+    // Which value is in each x,y,z register?
+    int x=0,y=0,z=0;
 
     struct pinst *inst = p->inst;
     for (int i = 0; i < b->insts; i++) {
-        if (b->inst[i].x) { *inst++ = (struct pinst){ldx, (unsigned)b->inst[i].x-1, 0}; }
-        if (b->inst[i].y) { *inst++ = (struct pinst){ldy, (unsigned)b->inst[i].y-1, 0}; }
-        if (b->inst[i].z) { *inst++ = (struct pinst){ldz, (unsigned)b->inst[i].z-1, 0}; }
+        if (b->inst[i].x && b->inst[i].x != x) {
+            *inst++ = (struct pinst){ldx, (unsigned)b->inst[i].x-1, 0};
+            x = b->inst[i].x;
+        }
+
+        if (b->inst[i].y && b->inst[i].y != y) {
+            *inst++ = (struct pinst){ldy, (unsigned)b->inst[i].y-1, 0};
+            y = b->inst[i].y;
+        }
+
+        if (b->inst[i].z && b->inst[i].z != z) {
+            *inst++ = (struct pinst){ldz, (unsigned)b->inst[i].z-1, 0};
+            z = b->inst[i].z;
+        }
+
         *inst++ = (struct pinst){b->inst[i].fn, b->inst[i].arg, 0};
+        x = i+1;
+
         *inst++ = (struct pinst){stx, (unsigned)i, 0};
     }
     *inst++ = (struct pinst){done, 0,0};
+
+    p->insts = (int)(inst - p->inst);
 
     free(b->inst);
     free(b);
@@ -152,10 +161,10 @@ static int inst(struct builder *b, int x, int y, int z, unsigned arg, stage *fn)
     return ++b->insts;  // IDs will be 1-indexed, leaving 0 to mark unused IDs.
 }
 
-int vm_splat  (struct builder *b, unsigned bits      ) { return inst(b,0,0,0, bits,splat  ); }
-int vm_uniform(struct builder *b, unsigned off       ) { return inst(b,0,0,0,  off,uniform); }
-int vm_load   (struct builder *b, unsigned ptr       ) { return inst(b,0,0,0,  ptr,load   ); }
-int vm_store  (struct builder *b, unsigned ptr, int x) { return inst(b,x,0,0,  ptr,store  ); }
+int  vm_splat  (struct builder *b, unsigned bits      ) { return inst(b,0,0,0, bits, splat  ); }
+int  vm_uniform(struct builder *b, unsigned off       ) { return inst(b,0,0,0, off , uniform); }
+int  vm_load   (struct builder *b, unsigned ptr       ) { return inst(b,0,0,0, ptr , load   ); }
+void vm_store  (struct builder *b, unsigned ptr, int x) { (void) inst(b,x,0,0, ptr , store  ); }
 
 int vm_add(struct builder *b, int x, int y       ) { return inst(b,x,y,0,0,add ); }
 int vm_sub(struct builder *b, int x, int y       ) { return inst(b,x,y,0,0,sub ); }

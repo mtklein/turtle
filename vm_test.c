@@ -1,6 +1,5 @@
 #include "test.h"
 #include "vm.h"
-#include <stdio.h>
 #include <stdlib.h>
 
 #define len(arr) (int)(sizeof arr / sizeof *arr)
@@ -22,7 +21,7 @@ int main(void) {
     b = NULL;
 
     char scratch[(2+2+4+3+1)*16];
-    expect(vm_scratch(p) == sizeof scratch);
+    expect(vm_scratch(p) <= sizeof scratch);
 
     float xs[] = {0,1,2,3,4,5,6,7,8},
           ys[] = {1,2,3,4,5,6,7,8,9};
