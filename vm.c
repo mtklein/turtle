@@ -1,5 +1,6 @@
 #include "buffer.h"
 #include "vm.h"
+#include <stdint.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -7,35 +8,36 @@
 typedef float    __attribute__((vector_size(K * sizeof(float   )))) V;
 typedef unsigned __attribute__((vector_size(K * sizeof(unsigned)))) M;
 
-struct pinst;
-typedef void stage(struct pinst const *ip, V *sp, void *ptr[], int const end, V x, V y, V z);
+struct PInst;
+typedef void Stage(struct PInst const *ip, V *sp, void *ptr[], int const end, V x, V y, V z);
 
 #define stage(name) \
-    static void name(struct pinst const *ip, V *sp, void *ptr[], int const end, V x, V y, V z)
+    static void name(struct PInst const *ip, V *sp, void *ptr[], int const end, V x, V y, V z)
 #define next (ip[1].fn)(ip+1,sp,ptr,end, x,y,z); return
 
-struct binst {
-    stage   *fn;
+typedef struct {
+    Stage   *fn;
     int      x,y,z;
     unsigned arg;
-};
-struct pinst {
-    stage   *fn;
-    unsigned arg,padding;
-};
+} BInst;
+
+typedef struct PInst {
+    Stage    *fn;
+    uintptr_t arg;  // Really just unsigned, but might as well expand up to padding.
+} PInst;
 
 typedef struct vm_builder {
-    struct binst *inst;
-    int           insts,padding;
-} builder;
+    BInst *inst;
+    int    insts,padding;
+} Builder;
 
 typedef struct vm_program {
-    int          insts,padding;
-    struct pinst inst[];
-} program;
+    int   insts,padding;
+    PInst inst[];
+} Program;
 
-builder* vm_builder(void) {
-    builder *b = calloc(1, sizeof *b);
+Builder* vm_builder(void) {
+    Builder *b = calloc(1, sizeof *b);
     return b;
 }
 
@@ -54,50 +56,41 @@ stage(done) {
     (void)z;
 }
 
-program* vm_compile(builder *b) {
+Program* vm_compile(Builder *b) {
     // Each might turn into ldx, ldy, ldz, the op itself, and finally stx, plus one more for done.
-    program *p = malloc(sizeof *p + (size_t)(5 * b->insts + 1) * sizeof *p->inst);
+    Program *p = malloc(sizeof *p + (size_t)(5 * b->insts + 1) * sizeof *p->inst);
 
     // Which value is in each x,y,z register?
     int x=0,y=0,z=0;
 
-    struct pinst *inst = p->inst;
+    PInst *pi = p->inst;
     for (int i = 0; i < b->insts; i++) {
-        if (b->inst[i].x && b->inst[i].x != x) {
-            *inst++ = (struct pinst){ldx, (unsigned)b->inst[i].x-1, 0};
-            x = b->inst[i].x;
-        }
+        BInst const bi = b->inst[i];
 
-        if (b->inst[i].y && b->inst[i].y != y) {
-            *inst++ = (struct pinst){ldy, (unsigned)b->inst[i].y-1, 0};
-            y = b->inst[i].y;
-        }
+        if (bi.x && bi.x != x) { *pi++ = (PInst){ldx, (unsigned)bi.x-1}; x = bi.x; }
+        if (bi.y && bi.y != y) { *pi++ = (PInst){ldy, (unsigned)bi.y-1}; y = bi.y; }
+        if (bi.z && bi.z != z) { *pi++ = (PInst){ldz, (unsigned)bi.z-1}; z = bi.z; }
 
-        if (b->inst[i].z && b->inst[i].z != z) {
-            *inst++ = (struct pinst){ldz, (unsigned)b->inst[i].z-1, 0};
-            z = b->inst[i].z;
-        }
-
-        *inst++ = (struct pinst){b->inst[i].fn, b->inst[i].arg, 0};
+        *pi++ = (PInst){bi.fn, bi.arg};
         x = i+1;
 
-        *inst++ = (struct pinst){stx, (unsigned)i, 0};
+        *pi++ = (PInst){stx, (unsigned)i};
     }
-    *inst++ = (struct pinst){done, 0,0};
+    *pi++ = (PInst){done, 0};
 
-    p->insts = (int)(inst - p->inst);
+    p->insts = (int)(pi - p->inst);
 
     free(b->inst);
     free(b);
     return p;
 }
 
-size_t vm_scratch(program const *p) {
+size_t vm_scratch(Program const *p) {
     return sizeof(V) * (size_t)p->insts;
 }
 
-void vm_run_(program const *p, void *scratch, int n, void *ptr[]) {
-    struct pinst const *ip = p->inst;
+void vm_run_(Program const *p, void *scratch, int n, void *ptr[]) {
+    PInst const *ip = p->inst;
     V* sp = scratch ? scratch : malloc(vm_scratch(p));
 
     int i = 0;
@@ -108,7 +101,9 @@ void vm_run_(program const *p, void *scratch, int n, void *ptr[]) {
 }
 
 stage(splat) {
-    x = (V)( (M){0} ^ ip->arg );
+    unsigned bits;
+    memcpy(&bits, &ip->arg, sizeof bits);
+    x = (V)( (M){0} ^ bits );
     next;
 }
 stage(uniform) {
@@ -154,34 +149,34 @@ stage(sel) {
 }
 
 #if 1
-__attribute__((noinline))
+__attribute__((noinline))  // This saves a ton of code size.
 #endif
-static int inst(builder *b, int x, int y, int z, unsigned arg, stage *fn) {
+static int inst(Builder *b, int x, int y, int z, unsigned arg, Stage *fn) {
     b->inst = buffer_push(b->inst, b->insts);
-    b->inst[b->insts] = (struct binst){fn,x,y,z,arg};
+    b->inst[b->insts] = (BInst){fn,x,y,z,arg};
     return ++b->insts;  // IDs will be 1-indexed, leaving 0 to mark unused IDs.
 }
 
-int  vm_splat  (builder *b, unsigned bits      ) { return inst(b,0,0,0, bits, splat  ); }
-int  vm_uniform(builder *b, unsigned off       ) { return inst(b,0,0,0, off , uniform); }
-int  vm_load   (builder *b, unsigned ptr       ) { return inst(b,0,0,0, ptr , load   ); }
-void vm_store  (builder *b, unsigned ptr, int x) { (void) inst(b,x,0,0, ptr , store  ); }
+int  vm_splat  (Builder *b, unsigned bits      ) { return inst(b, 0,0,0, bits, splat  ); }
+int  vm_uniform(Builder *b, unsigned off       ) { return inst(b, 0,0,0, off , uniform); }
+int  vm_load   (Builder *b, unsigned ptr       ) { return inst(b, 0,0,0, ptr , load   ); }
+void vm_store  (Builder *b, unsigned ptr, int x) { (void) inst(b, x,0,0, ptr , store  ); }
 
-int vm_add(builder *b, int x, int y       ) { return inst(b,x,y,0,0,add ); }
-int vm_sub(builder *b, int x, int y       ) { return inst(b,x,y,0,0,sub ); }
-int vm_mul(builder *b, int x, int y       ) { return inst(b,x,y,0,0,mul ); }
-int vm_div(builder *b, int x, int y       ) { return inst(b,x,y,0,0,div_); }
-int vm_mad(builder *b, int x, int y, int z) { return inst(b,x,y,z,0,mad ); }
+int vm_add(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, add ); }
+int vm_sub(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, sub ); }
+int vm_mul(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, mul ); }
+int vm_div(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, div_); }
+int vm_mad(Builder *b, int x, int y, int z) { return inst(b, x,y,z, 0, mad ); }
 
-int vm_eq(builder *b, int x, int y) { return inst(b,x,y,0,0,eq); }
-int vm_ne(builder *b, int x, int y) { return inst(b,x,y,0,0,ne); }
-int vm_lt(builder *b, int x, int y) { return inst(b,x,y,0,0,lt); }
-int vm_le(builder *b, int x, int y) { return inst(b,x,y,0,0,le); }
-int vm_gt(builder *b, int x, int y) { return vm_lt(b,y,x); }
-int vm_ge(builder *b, int x, int y) { return vm_le(b,y,x); }
+int vm_eq(Builder *b, int x, int y) { return inst(b, x,y,0, 0, eq); }
+int vm_ne(Builder *b, int x, int y) { return inst(b, x,y,0, 0, ne); }
+int vm_lt(Builder *b, int x, int y) { return inst(b, x,y,0, 0, lt); }
+int vm_le(Builder *b, int x, int y) { return inst(b, x,y,0, 0, le); }
+int vm_gt(Builder *b, int x, int y) { return vm_lt(b,y,x); }
+int vm_ge(Builder *b, int x, int y) { return vm_le(b,y,x); }
 
-int vm_and(builder *b, int x, int y       ) { return inst(b,x,y,0,0,and); }
-int vm_or (builder *b, int x, int y       ) { return inst(b,x,y,0,0,or ); }
-int vm_xor(builder *b, int x, int y       ) { return inst(b,x,y,0,0,xor); }
-int vm_sel(builder *b, int x, int y, int z) { return inst(b,x,y,z,0,sel); }
-int vm_not(builder *b, int x              ) { return inst(b,x,0,0,0,not); }
+int vm_and(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, and); }
+int vm_or (Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, or ); }
+int vm_xor(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, xor); }
+int vm_sel(Builder *b, int x, int y, int z) { return inst(b, x,y,z, 0, sel); }
+int vm_not(Builder *b, int x              ) { return inst(b, x,0,0, 0, not); }
