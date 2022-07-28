@@ -1,6 +1,7 @@
 #include "buffer.h"
 #include "vm.h"
-#include <stdint.h>
+#include <dlfcn.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -19,11 +20,12 @@ typedef struct {
     Stage   *fn;
     int      x,y,z;
     unsigned arg;
+    int      uses,death;
 } BInst;
 
 typedef struct PInst {
     Stage    *fn;
-    uintptr_t arg;  // Really just unsigned, but might as well expand up to padding.
+    unsigned  arg,padding;
 } PInst;
 
 typedef struct vm_builder {
@@ -36,15 +38,53 @@ typedef struct vm_program {
     PInst inst[];
 } Program;
 
+void vm_dump_builder(FILE *f, struct vm_builder const *b);
+void vm_dump_builder(FILE *f, struct vm_builder const *b) {
+    fprintf(f, "vm_builder, %d insts\n", b->insts);
+    for (int i = 0; i < b->insts; i++) {
+        BInst bi = b->inst[i];
+
+        fprintf(f, "%d\t(%d %d)\t", i+1, bi.uses, bi.death);
+        Dl_info info;
+        if (dladdr((void const*)bi.fn, &info)) {
+            fprintf(f, "%s\t", info.dli_sname);
+        } else {
+            fprintf(f, "%p\t", (void const*)bi.fn);
+        }
+
+        if (bi.x) { fprintf(f, " x=%d", bi.x); }
+        if (bi.y) { fprintf(f, " y=%d", bi.y); }
+        if (bi.z) { fprintf(f, " z=%d", bi.z); }
+        if ( 1  ) { fprintf(f, " arg=%x", bi.arg); }
+        fprintf(f, "\n");
+    }
+}
+
+void vm_dump_program(FILE *f, struct vm_program const *p);
+void vm_dump_program(FILE *f, struct vm_program const *p) {
+    fprintf(f, "vm_program, %d insts\n", p->insts);
+    for (int i = 0; i < p->insts; i++) {
+        PInst pi = p->inst[i];
+        Dl_info info;
+        fprintf(f, "%d\t", i);
+        if (dladdr((void const*)pi.fn, &info)) {
+            fprintf(f, "%s\t", info.dli_sname);
+        } else {
+            fprintf(f, "%p\t", (void const*)pi.fn);
+        }
+        fprintf(f, "%x\n", pi.arg);
+    }
+}
+
 Builder* vm_builder(void) {
     Builder *b = calloc(1, sizeof *b);
     return b;
 }
 
-stage(ldx) { x = sp[ip->arg]; next; }
-stage(ldy) { y = sp[ip->arg]; next; }
-stage(ldz) { z = sp[ip->arg]; next; }
-stage(stx) { sp[ip->arg] = x; next; }
+stage(ldx)  { x = sp[ip->arg]; next; }
+stage(ldy)  { y = sp[ip->arg]; next; }
+stage(ldz)  { z = sp[ip->arg]; next; }
+stage(save) { sp[ip->arg] = x; next; }
 
 stage(done) {
     (void)ip;
@@ -57,7 +97,7 @@ stage(done) {
 }
 
 Program* vm_compile(Builder *b) {
-    // Each might turn into ldx, ldy, ldz, the op itself, and finally stx, plus one more for done.
+    // Each might turn into ldx, ldy, ldz, the op itself, and finally save, plus one more for done.
     Program *p = malloc(sizeof *p + (size_t)(5 * b->insts + 1) * sizeof *p->inst);
 
     // Which value is in each x,y,z register?
@@ -67,16 +107,16 @@ Program* vm_compile(Builder *b) {
     for (int i = 0; i < b->insts; i++) {
         BInst const bi = b->inst[i];
 
-        if (bi.x && bi.x != x) { *pi++ = (PInst){ldx, (unsigned)bi.x-1}; x = bi.x; }
-        if (bi.y && bi.y != y) { *pi++ = (PInst){ldy, (unsigned)bi.y-1}; y = bi.y; }
-        if (bi.z && bi.z != z) { *pi++ = (PInst){ldz, (unsigned)bi.z-1}; z = bi.z; }
+        if (bi.x && bi.x != x) { *pi++ = (PInst){ldx, (unsigned)bi.x-1, 0}; x = bi.x; }
+        if (bi.y && bi.y != y) { *pi++ = (PInst){ldy, (unsigned)bi.y-1, 0}; y = bi.y; }
+        if (bi.z && bi.z != z) { *pi++ = (PInst){ldz, (unsigned)bi.z-1, 0}; z = bi.z; }
 
-        *pi++ = (PInst){bi.fn, bi.arg};
+        *pi++ = (PInst){bi.fn, bi.arg, 0};
         x = i+1;
 
-        *pi++ = (PInst){stx, (unsigned)i};
+        *pi++ = (PInst){save, (unsigned)i, 0};
     }
-    *pi++ = (PInst){done, 0};
+    *pi++ = (PInst){done, 0, 0};
 
     p->insts = (int)(pi - p->inst);
 
@@ -101,9 +141,7 @@ void vm_run_(Program const *p, void *scratch, int n, void *ptr[]) {
 }
 
 stage(splat) {
-    unsigned bits;
-    memcpy(&bits, &ip->arg, sizeof bits);
-    x = (V)( (M){0} ^ bits );
+    x = (V)( (M){0} ^ ip->arg );
     next;
 }
 stage(uniform) {
@@ -153,8 +191,12 @@ __attribute__((noinline))  // This saves a ton of code size.
 #endif
 static int inst(Builder *b, int x, int y, int z, unsigned arg, Stage *fn) {
     b->inst = buffer_push(b->inst, b->insts);
-    b->inst[b->insts] = (BInst){fn,x,y,z,arg};
-    return ++b->insts;  // IDs will be 1-indexed, leaving 0 to mark unused IDs.
+    b->inst[b->insts] = (BInst){fn,x,y,z,arg, 0,0};
+    int const id = ++b->insts;  // IDs will be 1-indexed, leaving 0 to mark unused IDs.
+    if (x) { b->inst[x-1].uses++;  b->inst[x-1].death = id; }
+    if (y) { b->inst[y-1].uses++;  b->inst[y-1].death = id; }
+    if (z) { b->inst[z-1].uses++;  b->inst[z-1].death = id; }
+    return id;
 }
 
 int  vm_splat  (Builder *b, unsigned bits      ) { return inst(b, 0,0,0, bits, splat  ); }

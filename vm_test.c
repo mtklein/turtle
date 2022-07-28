@@ -1,6 +1,10 @@
 #include "test.h"
 #include "vm.h"
+#include <stdio.h>
 #include <stdlib.h>
+
+void vm_dump_builder(FILE*, struct vm_builder const*);
+void vm_dump_program(FILE*, struct vm_program const*);
 
 #define len(arr) (int)(sizeof arr / sizeof *arr)
 
@@ -17,9 +21,13 @@ int main(void) {
         z = vm_splat(b, 0x3f800000);
     vm_store(b, 1, vm_mad(b, x,y,z));
 
+    vm_dump_builder(stdout, b);
+
     struct vm_program *p = vm_compile(b);
     expect(p);
     b = NULL;
+
+    vm_dump_program(stdout, p);
 
     char scratch[(2+2+1+5+3+1)*16];
     expect(vm_scratch(p) <= sizeof scratch);
