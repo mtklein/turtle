@@ -123,7 +123,7 @@ Program* vm_compile(Builder *b) {
             continue;
         }
 
-        *pi++ = (PInst){save, (unsigned)i, 0};
+        *pi++ = (PInst){save, (unsigned)x-1, 0};
     }
     *pi++ = (PInst){done, 0, 0};
 
