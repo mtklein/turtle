@@ -88,6 +88,9 @@ stage(ldy) { y = sp[ip->arg]; next; }
 stage(ldz) { z = sp[ip->arg]; next; }
 stage(stx) { sp[ip->arg] = x; next; }
 
+stage(x2y) { y = x; next; }
+stage(x2z) { z = x; next; }
+
 stage(done) {
     (void)ip;
     (void)sp;
@@ -117,14 +120,23 @@ Program* vm_compile(Builder *b) {
         if (bi.z && bi.z != z) { *pi++ = (PInst){ldz, (unsigned)bi.z-1, 0}; z = bi.z; }
 
         *pi++ = (PInst){bi.fn, bi.arg, 0};
-        x = i+1;
 
+        // Stores produce no value.
         if (bi.kind == STORE)  {
             continue;
         }
+
+        // The value from bi.fn is now in the x register by convention.
+        x = i+1;
+
+        // If consumed by the next instruction...
         if (bi.uses == 1 && bi.death == x+1) {
+            if (b->inst[i+1].x == x) { /* it wants it in x, all good */ }
+            if (b->inst[i+1].y == x) { *pi++ = (PInst){x2y,0,0}; y=x; }
+            if (b->inst[i+1].z == x) { *pi++ = (PInst){x2z,0,0}; z=x; }
             continue;
         }
+
         *pi++ = (PInst){stx, (unsigned)x-1, 0};
     }
     *pi++ = (PInst){done, 0, 0};
@@ -174,11 +186,11 @@ stage(store) {
     next;
 }
 
-stage(add ) { x += y  ; next; }
-stage(sub ) { x -= y  ; next; }
-stage(mul ) { x *= y  ; next; }
-stage(div_) { x /= y  ; next; }
-stage(mad ) { x += y*z; next; }
+stage(add ) { x = x+y  ; next; }
+stage(sub ) { x = x-y  ; next; }
+stage(mul ) { x = x*y  ; next; }
+stage(div_) { x = x/y  ; next; }
+stage(mad ) { x = x*y+z; next; }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wfloat-equal"
@@ -220,7 +232,7 @@ int vm_add(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, add , MATH)
 int vm_sub(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, sub , MATH); }
 int vm_mul(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, mul , MATH); }
 int vm_div(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, div_, MATH); }
-int vm_mad(Builder *b, int x, int y, int z) { return inst(b,z,x,y,0, mad , MATH); }
+int vm_mad(Builder *b, int x, int y, int z) { return inst(b,x,y,z,0, mad , MATH); }
 
 int vm_eq(Builder *b, int x, int y) { return inst(b,x,y,0,0, eq, MATH); }
 int vm_ne(Builder *b, int x, int y) { return inst(b,x,y,0,0, ne, MATH); }
