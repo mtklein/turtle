@@ -21,6 +21,8 @@ typedef struct {
     int      x,y,z;
     unsigned arg;
     int      uses,death;
+    enum Kind { MATH, SPLAT, UNIFORM, LOAD, STORE } kind;
+    int      padding;
 } BInst;
 
 typedef struct PInst {
@@ -81,10 +83,10 @@ Builder* vm_builder(void) {
     return b;
 }
 
-stage(ldx)  { x = sp[ip->arg]; next; }
-stage(ldy)  { y = sp[ip->arg]; next; }
-stage(ldz)  { z = sp[ip->arg]; next; }
-stage(save) { sp[ip->arg] = x; next; }
+stage(ldx) { x = sp[ip->arg]; next; }
+stage(ldy) { y = sp[ip->arg]; next; }
+stage(ldz) { z = sp[ip->arg]; next; }
+stage(stx) { sp[ip->arg] = x; next; }
 
 stage(done) {
     (void)ip;
@@ -97,11 +99,14 @@ stage(done) {
 }
 
 Program* vm_compile(Builder *b) {
-    // Each might turn into ldx, ldy, ldz, the op itself, and finally save, plus one more for done.
+    // Each might turn into ldx, ldy, ldz, the op itself, and finally stx, plus one more for done.
     Program *p = malloc(sizeof *p + (size_t)(5 * b->insts + 1) * sizeof *p->inst);
 
     // Which value is in each x,y,z register?
     int x=0,y=0,z=0;
+
+    // Where does each value live?
+    enum { NONE, X,Y,Z, MEMORY } *home = calloc(sizeof *home, (size_t)b->insts);
 
     PInst *pi = p->inst;
     for (int i = 0; i < b->insts; i++) {
@@ -114,21 +119,19 @@ Program* vm_compile(Builder *b) {
         *pi++ = (PInst){bi.fn, bi.arg, 0};
         x = i+1;
 
-        if (bi.uses == 0)  {
-            // N.B. dead code _or_ a side-effect like a store.
+        if (bi.kind == STORE)  {
             continue;
         }
-
         if (bi.uses == 1 && bi.death == x+1) {
             continue;
         }
-
-        *pi++ = (PInst){save, (unsigned)x-1, 0};
+        *pi++ = (PInst){stx, (unsigned)x-1, 0};
     }
     *pi++ = (PInst){done, 0, 0};
 
     p->insts = (int)(pi - p->inst);
 
+    free(home);
     free(b->inst);
     free(b);
     return p;
@@ -198,9 +201,9 @@ stage(sel) {
 #if 1
 __attribute__((noinline))  // This saves a ton of code size.
 #endif
-static int inst(Builder *b, int x, int y, int z, unsigned arg, Stage *fn) {
+static int inst(Builder *b, int x, int y, int z, unsigned arg, Stage *fn, enum Kind kind) {
     b->inst = buffer_push(b->inst, b->insts);
-    b->inst[b->insts] = (BInst){fn,x,y,z,arg, 0,0};
+    b->inst[b->insts] = (BInst){fn,x,y,z,arg, 0,0, kind,0};
     int const id = ++b->insts;  // IDs will be 1-indexed, leaving 0 to mark unused IDs.
     if (x) { b->inst[x-1].uses++;  b->inst[x-1].death = id; }
     if (y) { b->inst[y-1].uses++;  b->inst[y-1].death = id; }
@@ -208,26 +211,26 @@ static int inst(Builder *b, int x, int y, int z, unsigned arg, Stage *fn) {
     return id;
 }
 
-int  vm_splat  (Builder *b, unsigned bits      ) { return inst(b, 0,0,0, bits, splat  ); }
-int  vm_uniform(Builder *b, unsigned off       ) { return inst(b, 0,0,0, off , uniform); }
-int  vm_load   (Builder *b, unsigned ptr       ) { return inst(b, 0,0,0, ptr , load   ); }
-void vm_store  (Builder *b, unsigned ptr, int x) { (void) inst(b, x,0,0, ptr , store  ); }
+int  vm_splat  (Builder *b, unsigned bits      ) { return inst(b,0,0,0,bits, splat  , SPLAT  ); }
+int  vm_uniform(Builder *b, unsigned off       ) { return inst(b,0,0,0,off , uniform, UNIFORM); }
+int  vm_load   (Builder *b, unsigned ptr       ) { return inst(b,0,0,0,ptr , load   , LOAD   ); }
+void vm_store  (Builder *b, unsigned ptr, int x) { (void) inst(b,x,0,0,ptr , store  , STORE  ); }
 
-int vm_add(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, add ); }
-int vm_sub(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, sub ); }
-int vm_mul(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, mul ); }
-int vm_div(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, div_); }
-int vm_mad(Builder *b, int x, int y, int z) { return inst(b, z,x,y, 0, mad ); }
+int vm_add(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, add , MATH); }
+int vm_sub(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, sub , MATH); }
+int vm_mul(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, mul , MATH); }
+int vm_div(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, div_, MATH); }
+int vm_mad(Builder *b, int x, int y, int z) { return inst(b,z,x,y,0, mad , MATH); }
 
-int vm_eq(Builder *b, int x, int y) { return inst(b, x,y,0, 0, eq); }
-int vm_ne(Builder *b, int x, int y) { return inst(b, x,y,0, 0, ne); }
-int vm_lt(Builder *b, int x, int y) { return inst(b, x,y,0, 0, lt); }
-int vm_le(Builder *b, int x, int y) { return inst(b, x,y,0, 0, le); }
+int vm_eq(Builder *b, int x, int y) { return inst(b,x,y,0,0, eq, MATH); }
+int vm_ne(Builder *b, int x, int y) { return inst(b,x,y,0,0, ne, MATH); }
+int vm_lt(Builder *b, int x, int y) { return inst(b,x,y,0,0, lt, MATH); }
+int vm_le(Builder *b, int x, int y) { return inst(b,x,y,0,0, le, MATH); }
 int vm_gt(Builder *b, int x, int y) { return vm_lt(b,y,x); }
 int vm_ge(Builder *b, int x, int y) { return vm_le(b,y,x); }
 
-int vm_and(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, and); }
-int vm_or (Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, or ); }
-int vm_xor(Builder *b, int x, int y       ) { return inst(b, x,y,0, 0, xor); }
-int vm_sel(Builder *b, int x, int y, int z) { return inst(b, x,y,z, 0, sel); }
-int vm_not(Builder *b, int x              ) { return inst(b, x,0,0, 0, not); }
+int vm_and(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, and, MATH); }
+int vm_or (Builder *b, int x, int y       ) { return inst(b,x,y,0,0, or , MATH); }
+int vm_xor(Builder *b, int x, int y       ) { return inst(b,x,y,0,0, xor, MATH); }
+int vm_sel(Builder *b, int x, int y, int z) { return inst(b,x,y,z,0, sel, MATH); }
+int vm_not(Builder *b, int x              ) { return inst(b,x,0,0,0, not, MATH); }
