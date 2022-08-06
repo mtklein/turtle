@@ -8,11 +8,12 @@ clang = '/opt/homebrew/opt/llvm/bin/clang-14 -fcolor-diagnostics -Weverything -W
 gcc   = '/opt/homebrew/bin/gcc-11            -fdiagnostics-color -Wall -Wextra'
 
 modes = {
-    'dbg': clang + ' -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
-    'opt': clang + ' -DNDEBUG -Os',
-    'lto': clang + ' -DNDEBUG -Os -flto',
-    'x86': clang + ' -DNDEBUG -Os -arch x86_64 -momit-leaf-frame-pointer',
-    'gcc': gcc   + ' -DNDEBUG -Os',
+    'dbg':  clang + ' -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
+    'tsan': clang + ' -fsanitize=thread                    -fno-sanitize-recover=all',
+    'opt':  clang + ' -DNDEBUG -Os',
+    'lto':  clang + ' -DNDEBUG -Os -flto',
+    'x86':  clang + ' -DNDEBUG -Os -arch x86_64 -momit-leaf-frame-pointer',
+    'gcc':  gcc   + ' -DNDEBUG -Os',
 }
 
 srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
