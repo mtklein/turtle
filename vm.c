@@ -1,9 +1,13 @@
 #include "buffer.h"
 #include "vm.h"
-#include <dlfcn.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#if defined(__linux__)
+    #define _GNU_SOURCE
+#endif
+#include <dlfcn.h>
 
 #define K 4
 typedef float    __attribute__((vector_size(K * sizeof(float   )))) V;

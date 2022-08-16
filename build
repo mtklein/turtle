@@ -4,17 +4,29 @@ import os
 import subprocess
 import sys
 
-clang = '/opt/homebrew/opt/llvm/bin/clang-14 -fcolor-diagnostics -Weverything -Wno-declaration-after-statement'
-gcc   = '/opt/homebrew/bin/gcc-12            -fdiagnostics-color -Wall -Wextra'
+ar    = 'ar'
+clang = 'clang-14'
+gcc   = 'gcc-12'
+
+if sys.platform == 'darwin':
+    ar    = '/opt/homebrew/opt/llvm/bin/llvm-ar'
+    clang = '/opt/homebrew/opt/llvm/bin/clang-14'
+    gcc   = '/opt/homebrew/bin/gcc-12'
+
+clang += ' -fcolor-diagnostics -Weverything -Wno-declaration-after-statement'
+gcc   += ' -fdiagnostics-color -Wall -Wextra'
 
 modes = {
     'dbg':  clang + ' -fsanitize=address,integer,undefined -fno-sanitize-recover=all',
     'tsan': clang + ' -fsanitize=thread                    -fno-sanitize-recover=all',
     'opt':  clang + ' -DNDEBUG -Os',
     'lto':  clang + ' -DNDEBUG -Os -flto',
-    'x86':  clang + ' -DNDEBUG -Os -arch x86_64 -momit-leaf-frame-pointer',
     'gcc':  gcc   + ' -DNDEBUG -Os',
 }
+if sys.platform == 'darwin':
+    modes['x86']  = clang + ' -DNDEBUG -Os -arch x86_64 -momit-leaf-frame-pointer'
+if sys.platform == 'linux':
+    modes['msan'] = clang + ' -fsanitize=memory -fno-sanitize-recover=all'
 
 srcs  = subprocess.check_output(['git','grep','-lw',       '.','**.c']).decode('utf-8').split()
 mains = subprocess.check_output(['git','grep','-lw','int main','**.c']).decode('utf-8').split()
@@ -33,7 +45,7 @@ rule compile
     deps    = gcc
 
 rule archive
-    command = /opt/homebrew/opt/llvm/bin/llvm-ar rcs $out $in
+    command = $ar rcs $out $in
 
 rule link
     command = $cc $in -o $out
@@ -51,6 +63,7 @@ rule run
         f.write(
             f'build out/{mode}/lib.a: archive'
             f' {" ".join(os.path.join("out", mode, target+".o") for target in rest)}\n'
+            f'    ar = {ar}\n'
         )
 
         for target in mains:
