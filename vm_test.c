@@ -29,7 +29,7 @@ static void test_basics(void) {
     struct vm_program *p = vm_compile(b);
     vm_dump_program(stdout, p);
 
-    char scratch[(2+2+1+5+3+1)*16];
+    _Alignas(16) char scratch[16*(2+2+1+5+3+1)];
     expect(vm_scratch(p) <= sizeof scratch);
 
     float xs[] = {0,1,2,3,4,5,6,7,8},
